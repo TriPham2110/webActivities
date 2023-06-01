@@ -22,11 +22,31 @@ chrome.runtime.onMessage.addListener(msg => {
 	if (msg.keepAlive) console.log('keepAlive');
 });
 
-// only reset the storage when one chrome window first starts up
+// when one chrome window first starts up
+// open a pop up to ask the user if they want to keep their previous session's web activities
 chrome.runtime.onStartup.addListener(async function () {
 	try {
 		let windows = await getWindows();
 		if(windows.length === 1){
+			let tableData = await readLocalStorage('tableData');
+
+			if (tableData.length > 0) {
+				//	https://stackoverflow.com/questions/5345435/pop-up-window-center-screen
+				let curWindow = await getLastFocusedWindow();
+				const width = Math.round(curWindow.width * 0.5);
+				const height = Math.round(curWindow.height * 0.5);
+				const left = Math.round(curWindow.left + (curWindow.width - width) / 2);
+				const top = Math.round(curWindow.top + (curWindow.height - height) / 2);
+				await chrome.windows.create({
+					url: 'refreshActivities.html',
+					type: 'popup',
+					width: width,
+					height: height,
+					left: left,
+					top: top
+				});
+			}
+
 			await writeLocalStorage('latestTab', {});
 			await writeLocalStorage('closedTabId', -1);
 			await writeLocalStorage('transitionsList', []);
@@ -38,7 +58,7 @@ chrome.runtime.onStartup.addListener(async function () {
 		}
 		createOffscreen();
 	} catch (error) {
-		console.err(error);
+		console.error(error);
 	}
 });
 
@@ -625,7 +645,7 @@ setInterval(async function() {
 		});
 
 		let result = JSON.stringify(copyData, undefined, 4);
-		await asyncPostCall(result);
-		// console.log(result);
+		// await asyncPostCall(result);
+		console.log(result);
 	}
 }, 2000);
